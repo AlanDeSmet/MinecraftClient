@@ -85,6 +85,7 @@ my %RECV_PACKET_JUMP_TABLE = (
 	0x1f => \&recv_entity_relative_move,
 	0x20 => \&recv_entity_look,
 	0x21 => \&recv_entity_look_and_relative_move,
+	0x26 => \&recv_entity_status,
 	0x28 => \&recv_entity_metadata,
 	0x32 => \&recv_pre_chunk,
 	0x33 => \&recv_chunk,
@@ -629,7 +630,14 @@ sub recv_entity_look_and_relative_move {
 	$self->recv_sint8(); # pitch
 }
 
+sub recv_entity_status {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+	$self->recv_sint8(); # status
+}
+
 sub recv_entity_metadata {
+	my $self = shift;
 	$self->recv_sint32(); # entity ID
 	$self->recv_burn_metadata();
 }
