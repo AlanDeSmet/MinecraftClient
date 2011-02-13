@@ -283,14 +283,18 @@ sub sysread {
 	}
 	my $socket = $self->{'socket'};
 	my $x;
-	my $len_read = sysread($socket, $x, $len);
-	if(not defined $len_read) {
-		$self->debug_sendrecv_force();
-		confess "Unable to read from server: $!";
-	}
-	if($len_read == 0) {
-		$self->debug_sendrecv_force();
-		confess "Server closed connection.";
+	my $total_read = 0;
+	while($total_read < $len) {
+		my $len_read = sysread($socket, $x, $len - $total_read);
+		if(not defined $len_read) {
+			$self->debug_sendrecv_force();
+			confess "Unable to read from server: $!";
+		}
+		if($len_read == 0) {
+			$self->debug_sendrecv_force();
+			confess "Server closed connection.";
+		}
+		$total_read += $len_read;
 	}
 	return $x;
 }
