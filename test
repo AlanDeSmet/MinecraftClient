@@ -1,0 +1,18 @@
+#! /usr/bin/perl -w
+use strict;
+use FindBin;
+use lib "$FindBin::Bin";
+use Minecraft::Client;
+
+my $username = undef;#'13586913';
+my $password = undef;#'xnTUbxLwCqD';
+my $server = 'localhost';
+my $port = undef;
+
+my $bot = Minecraft::Client->new($server, $port, $username, $password);
+while(1) {
+	my $more = $bot->pump_and_burn();
+	if(not $more) {
+		sleep(1.0/20.0);
+	}
+}
