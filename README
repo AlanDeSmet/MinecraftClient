@@ -1,0 +1,13 @@
+This is a Perl module that implements the Minecraft client protocol. However:
+
+ 1. It is not finished.
+
+ 2. It may never support 64-bit integers, not any floating point values. These
+    are difficult to support, at least without non-core modules.
+
+ 3. My particular needs are only to support logging in, idling, then logging
+    back out. (This is used to implement waypoints with an SMP wrapper like 
+	tztk.)
+
+See http://www.highprogrammer.com/alan/games/video/minecraft/Minecraft-Client.html for more information.
+
