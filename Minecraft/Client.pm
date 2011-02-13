@@ -76,10 +76,20 @@ my %RECV_PACKET_JUMP_TABLE = (
 	0x0a => \&recv_player,
 	0x0d => \&recv_player_position_and_look,
 	0x10 => \&recv_holding_change,
+	0x14 => \&recv_named_entity_spawn,
 	0x15 => \&recv_pickup_spawn,
 	0x18 => \&recv_mob_spawn,
 	0x1c => \&recv_entity_velocity,
+	0x1d => \&recv_destroy_entity,
+	0x1e => \&recv_entity,
+	0x1f => \&recv_entity_relative_move,
+	0x20 => \&recv_entity_look,
+	0x21 => \&recv_entity_look_and_relative_move,
+	0x28 => \&recv_entity_metadata,
 	0x32 => \&recv_pre_chunk,
+	0x33 => \&recv_chunk,
+	0x34 => \&recv_multi_block_change,
+	0x35 => \&recv_block_change,
 	0x67 => \&recv_set_slot,
 	0x68 => \&recv_window_items,
 	0xff => \&recv_disconnect,
@@ -296,7 +306,22 @@ sub sysread {
 		}
 		$total_read += $len_read;
 	}
+	if($total_read > $len) {
+		confess "Somehow read more bytes than requested!";
+	}
 	return $x;
+}
+
+sub recv_burn_blob {
+	my $self = shift;
+	my $len = shift;
+	while($len > 0) {
+		my $munch = 128;
+		if($munch > $len) { $munch = $len; }
+		$len -= $munch;
+		$self->sysread($munch);
+	}
+	if($len < 0) { confess("$len < 0!"); }
 }
 
 sub recv_sint8 {
@@ -520,6 +545,18 @@ sub recv_holding_change {
 	return;
 }
 
+sub recv_named_entity_spawn {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+	$self->recv_string(); # Player Name
+	$self->recv_sint32(); # X
+	$self->recv_sint32(); # Y
+	$self->recv_sint32(); # Z
+	$self->recv_sint8(); # rotation
+	$self->recv_sint8(); # pitch
+	$self->recv_sint16(); # current item
+}
+
 sub recv_pickup_spawn {
 	my $self = shift;
 	$self->recv_sint32(); # entity ID
@@ -557,6 +594,46 @@ sub recv_entity_velocity {
 	return;
 }
 
+sub recv_destroy_entity {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+}
+
+sub recv_entity {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+}
+
+sub recv_entity_relative_move {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+	$self->recv_sint8(); # dx
+	$self->recv_sint8(); # dy
+	$self->recv_sint8(); # dz
+}
+
+sub recv_entity_look {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+	$self->recv_sint8(); # yaw
+	$self->recv_sint8(); # pitch
+}
+
+sub recv_entity_look_and_relative_move {
+	my $self = shift;
+	$self->recv_sint32(); # entity ID
+	$self->recv_sint8(); # dx
+	$self->recv_sint8(); # dy
+	$self->recv_sint8(); # dz
+	$self->recv_sint8(); # yaw
+	$self->recv_sint8(); # pitch
+}
+
+sub recv_entity_metadata {
+	$self->recv_sint32(); # entity ID
+	$self->recv_burn_metadata();
+}
+
 sub recv_pre_chunk {
 	my $self = shift;
 	$self->recv_sint32(); # x
@@ -564,13 +641,46 @@ sub recv_pre_chunk {
 	$self->recv_sint8(); # mode
 }
 
+sub recv_chunk {
+	my $self = shift;
+	$self->recv_sint32(); # x
+	$self->recv_sint16(); # y
+	$self->recv_sint32(); # z
+	$self->recv_sint8(); # dx
+	$self->recv_sint8(); # dy
+	$self->recv_sint8(); # dz
+	my $data_len = $self->recv_sint32();
+	$self->recv_burn_blob($data_len); # compressed data.
+}
+
+sub recv_multi_block_change {
+	my $self = shift;
+	$self->recv_sint32(); # x
+	$self->recv_sint32(); # z
+	my $data_len = $self->recv_sint16();
+	for(my $i = 0; $i < $data_len; $i++) { $self->recv_sint16(); } # coordinate
+	for(my $i = 0; $i < $data_len; $i++) { $self->recv_sint8(); } # type
+	for(my $i = 0; $i < $data_len; $i++) { $self->recv_sint8(); } # meta
+}
+
+sub recv_block_change {
+	my $self = shift;
+	$self->recv_sint32(); # x
+	$self->recv_sint8(); # y
+	$self->recv_sint32(); # z
+	$self->recv_sint8(); # type
+	$self->recv_sint8(); # meta
+}
+
 sub recv_set_slot {
 	my $self = shift;
 	$self->recv_sint8(); # window id
 	$self->recv_sint16(); # slot
-	$self->recv_sint16(); # item id
-	$self->recv_sint8(); # count
-	$self->recv_sint16(); # Times used
+	my $id = $self->recv_sint16(); # item id
+	if($id != -1) {
+		$self->recv_sint8(); # count
+		$self->recv_sint16(); # Times used
+	}
 }
 
 sub recv_window_items {
