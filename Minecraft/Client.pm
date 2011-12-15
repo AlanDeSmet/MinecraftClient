@@ -3,6 +3,10 @@
 #
 
 package Minecraft::Client;
+
+use strict;
+use warnings;
+
 use Carp;
 use IO::Socket;
 use IO::Select;
